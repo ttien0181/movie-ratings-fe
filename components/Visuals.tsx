@@ -1,11 +1,11 @@
 import React, { useEffect, useRef, useMemo } from 'react';
 import * as d3 from 'd3';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
-import { Genre, ReviewResponse } from '../types';
+import { GenreResponse, ReviewResponse } from '../types';
 
 // --- D3 Genre Bubble Chart ---
 interface GenreBubblesProps {
-  genres: Genre[];
+  genres: GenreResponse[];
   onSelectGenre: (id: number | null) => void;
   selectedGenreId: number | null;
 }

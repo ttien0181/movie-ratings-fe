@@ -1,38 +1,52 @@
 export interface APIResponse<T> {
   status: string;
   result: T;
+  errors?: ErrorDetail[];
 }
 
-export interface Genre {
+export interface ErrorDetail {
+  field: string;
+  errorMessage: string;
+  timestamp: string;
+}
+
+export interface GenreResponse {
   id: number;
   name: string;
+  description?: string;
 }
 
-export interface Movie {
+export interface GenreRequest {
+  name: string;
+  description?: string;
+}
+
+export interface MovieResponse {
   id: number;
   title: string;
   description: string;
-  director: string;
   releaseYear: number;
-  posterUrl?: string; // Optional in case backend doesn't have it yet, we can mock
-  averageRating?: number; // Calculated by backend or frontend
-  genre: Genre;
+  rating: number;      // Float in backend
+  totalRate: number;   // Integer in backend
+  genreId: number;     // Long in backend
+  createdAt?: string;
+  actors?: string;
+  posterUrl?: string;  // Frontend only (mocked)
 }
 
-// DTO for creating/updating
 export interface MovieRequest {
   title: string;
   description: string;
-  director: string;
   releaseYear: number;
   genreId: number;
+  actors: string;
 }
 
-export interface User {
+export interface UserResponse {
   id: number;
   username: string;
   email: string;
-  // Password is not usually sent back
+  createdAt?: string;
 }
 
 export interface UserRequest {
@@ -43,36 +57,30 @@ export interface UserRequest {
 
 export interface ReviewResponse {
   id: number;
+  userId: number;
+  movieId: number;
   rating: number;
   content: string;
-  createdAt?: string; // ISO string
-  movieId: number;
-  userId: number;
-  username?: string; // Helper if backend enriches it, else we fetch user
+  createdAt?: string;
 }
 
 export interface ReviewRequest {
-  content: string;
-  rating: number;
-  movieId: number;
   userId: number;
+  movieId: number;
+  rating: number;
+  content: string;
 }
 
 export interface CommentResponse {
   id: number;
-  content: string;
-  reviewId: number;
   userId: number;
-  username?: string;
+  reviewId: number;
+  content: string;
   createdAt?: string;
 }
 
 export interface CommentRequest {
-  content: string;
-  reviewId: number;
   userId: number;
-}
-
-export interface GenreRequest {
-  name: string;
+  reviewId: number;
+  content: string;
 }

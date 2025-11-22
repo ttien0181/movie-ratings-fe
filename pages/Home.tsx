@@ -1,13 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { Search, Star, Film } from 'lucide-react';
 import { movieService, genreService } from '../services/api';
-import { Movie, Genre } from '../types';
+import { MovieResponse, GenreResponse } from '../types';
 import { GenreBubbles } from '../components/Visuals';
 
 export const Home: React.FC = () => {
-  const [movies, setMovies] = useState<Movie[]>([]);
-  const [genres, setGenres] = useState<Genre[]>([]);
+  const [movies, setMovies] = useState<MovieResponse[]>([]);
+  const [genres, setGenres] = useState<GenreResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedGenre, setSelectedGenre] = useState<number | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -30,11 +30,18 @@ export const Home: React.FC = () => {
     fetchData();
   }, []);
 
-  // Client side filter for demo responsiveness (production would use API search/filter)
+  // Create a map for easy genre name lookup since movie only has genreId
+  const genreMap = useMemo(() => {
+    const map: Record<number, string> = {};
+    genres.forEach(g => map[g.id] = g.name);
+    return map;
+  }, [genres]);
+
   const filteredMovies = movies.filter(m => {
-    const matchesGenre = selectedGenre ? m.genre?.id === selectedGenre : true;
+    const matchesGenre = selectedGenre ? m.genreId === selectedGenre : true;
+    // Check title or actors
     const matchesSearch = m.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                          m.director.toLowerCase().includes(searchQuery.toLowerCase());
+                          (m.actors && m.actors.toLowerCase().includes(searchQuery.toLowerCase()));
     return matchesGenre && matchesSearch;
   });
 
@@ -58,7 +65,7 @@ export const Home: React.FC = () => {
               <Search className="absolute left-3 top-3.5 text-gray-400" size={20} />
               <input
                 type="text"
-                placeholder="Search movies, directors..."
+                placeholder="Search movies, actors..."
                 className="w-full bg-brand-900 border border-brand-700 rounded-xl py-3 pl-10 pr-4 text-white focus:outline-none focus:ring-2 focus:ring-brand-500"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
@@ -90,14 +97,16 @@ export const Home: React.FC = () => {
                      />
                      <div className="absolute top-2 right-2 bg-black/70 backdrop-blur-md px-2 py-1 rounded-md flex items-center gap-1 text-yellow-400 font-bold border border-white/10">
                         <Star size={14} fill="currentColor" />
-                        {movie.averageRating ? movie.averageRating.toFixed(1) : 'N/A'}
+                        {movie.rating ? movie.rating.toFixed(1) : 'N/A'}
                      </div>
                    </div>
                    <div className="p-4">
                      <h3 className="font-bold text-lg text-white truncate mb-1">{movie.title}</h3>
                      <div className="flex justify-between items-center text-sm text-gray-400">
                         <span>{movie.releaseYear}</span>
-                        <span className="bg-brand-700 px-2 py-0.5 rounded text-xs text-brand-200">{movie.genre?.name || 'General'}</span>
+                        <span className="bg-brand-700 px-2 py-0.5 rounded text-xs text-brand-200">
+                            {genreMap[movie.genreId] || 'General'}
+                        </span>
                      </div>
                    </div>
                  </Link>

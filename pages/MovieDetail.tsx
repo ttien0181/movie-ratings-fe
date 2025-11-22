@@ -1,15 +1,16 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { Star, Calendar, User, MessageSquare, ArrowLeft, Send, Film } from 'lucide-react';
-import { movieService, reviewService, commentService } from '../services/api';
-import { Movie, ReviewResponse, CommentResponse } from '../types';
+import { movieService, reviewService, commentService, genreService } from '../services/api';
+import { MovieResponse, ReviewResponse, CommentResponse, GenreResponse } from '../types';
 import { RatingChart } from '../components/Visuals';
 
 const MOCK_CURRENT_USER_ID = 1; // Simulating logged in user
 
 export const MovieDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
-  const [movie, setMovie] = useState<Movie | null>(null);
+  const [movie, setMovie] = useState<MovieResponse | null>(null);
+  const [genre, setGenre] = useState<GenreResponse | null>(null);
   const [reviews, setReviews] = useState<ReviewResponse[]>([]);
   const [loading, setLoading] = useState(true);
   
@@ -26,11 +27,20 @@ export const MovieDetail: React.FC = () => {
 
   const loadData = useCallback(async () => {
     try {
-      const [movieData, reviewsData] = await Promise.all([
-        movieService.getById(movieId),
-        reviewService.getByMovie(movieId)
-      ]);
+      const movieData = await movieService.getById(movieId);
       setMovie(movieData);
+
+      // Fetch genre details since movie only has genreId
+      if (movieData.genreId) {
+        try {
+            const genreData = await genreService.getById(movieData.genreId);
+            setGenre(genreData);
+        } catch (e) {
+            console.warn("Could not fetch genre details");
+        }
+      }
+
+      const reviewsData = await reviewService.getByMovie(movieId);
       setReviews(reviewsData);
       
       // Load comments for all reviews
@@ -113,7 +123,7 @@ export const MovieDetail: React.FC = () => {
                 <div className="relative z-10">
                     <div className="flex items-center gap-3 mb-2">
                         <span className="bg-brand-accent px-3 py-1 rounded-full text-xs font-bold text-white uppercase tracking-wider">
-                            {movie.genre?.name || 'Movie'}
+                            {genre?.name || 'Movie'}
                         </span>
                         <span className="flex items-center gap-1 text-gray-300 text-sm">
                             <Calendar size={14} /> {movie.releaseYear}
@@ -124,16 +134,16 @@ export const MovieDetail: React.FC = () => {
                     
                     <div className="flex items-center gap-6">
                         <div className="flex flex-col">
-                            <span className="text-sm text-gray-500 uppercase tracking-wider">Director</span>
-                            <span className="text-white font-medium">{movie.director}</span>
+                            <span className="text-sm text-gray-500 uppercase tracking-wider">Actors</span>
+                            <span className="text-white font-medium">{movie.actors || 'N/A'}</span>
                         </div>
                         <div className="h-10 w-px bg-brand-700"></div>
                         <div className="flex flex-col">
                             <span className="text-sm text-gray-500 uppercase tracking-wider">Rating</span>
                             <div className="flex items-center gap-2">
                                 <Star className="text-yellow-400 fill-yellow-400" size={20} />
-                                <span className="text-2xl font-bold text-white">{movie.averageRating?.toFixed(1) || 'N/A'}</span>
-                                <span className="text-sm text-gray-500">/ 5</span>
+                                <span className="text-2xl font-bold text-white">{movie.rating?.toFixed(1) || 'N/A'}</span>
+                                <span className="text-sm text-gray-500">/ 5 ({movie.totalRate || 0})</span>
                             </div>
                         </div>
                     </div>
@@ -223,7 +233,9 @@ export const MovieDetail: React.FC = () => {
                                         <div key={comment.id} className="bg-brand-900/50 p-3 rounded-lg mb-2 border border-brand-700/30">
                                             <div className="flex justify-between">
                                                 <span className="text-xs font-bold text-brand-400">User #{comment.userId}</span>
-                                                <span className="text-[10px] text-gray-600">Just now</span>
+                                                <span className="text-[10px] text-gray-600">
+                                                    {comment.createdAt ? new Date(comment.createdAt).toLocaleDateString() : 'Just now'}
+                                                </span>
                                             </div>
                                             <p className="text-sm text-gray-300 mt-1">{comment.content}</p>
                                         </div>
@@ -268,7 +280,7 @@ export const MovieDetail: React.FC = () => {
                         </div>
                         <div className="flex justify-between">
                             <dt className="text-gray-500">Avg Score</dt>
-                            <dd className="text-yellow-400 font-bold">{movie.averageRating?.toFixed(1) || 0}</dd>
+                            <dd className="text-yellow-400 font-bold">{movie.rating?.toFixed(1) || 0}</dd>
                         </div>
                     </dl>
                 </div>

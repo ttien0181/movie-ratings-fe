@@ -34,7 +34,7 @@ const Footer: React.FC = () => (
     <footer className="bg-brand-900 border-t border-brand-800 py-8 mt-20">
         <div className="max-w-7xl mx-auto px-4 text-center">
             <p className="text-gray-500 text-sm">© 2024 CineRate. All rights reserved.</p>
-            <p className="text-gray-600 text-xs mt-2">Connected to Spring Boot Backend at port 8080</p>
+            <p className="text-gray-600 text-xs mt-2">Connected to Spring Boot Backend at /movie-ratings</p>
         </div>
     </footer>
 )
