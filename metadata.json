@@ -1,0 +1,5 @@
+{
+  "name": "CineRate",
+  "description": "A modern movie rating and review platform connecting to a Spring Boot backend.",
+  "requestFramePermissions": []
+}
