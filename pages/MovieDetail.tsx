@@ -1,18 +1,18 @@
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { Star, Calendar, User, MessageSquare, ArrowLeft, Send, Film } from 'lucide-react';
-import { movieService, reviewService, commentService, genreService } from '../services/api';
-import { MovieResponse, ReviewResponse, CommentResponse, GenreResponse } from '../types';
+import { movieService, reviewService, commentService } from '../services/api';
+import { MovieResponse, ReviewResponse, CommentResponse } from '../types';
 import { RatingChart } from '../components/Visuals';
-
-const MOCK_CURRENT_USER_ID = 1; // Simulating logged in user
+import { useAuth } from '../context/AuthContext';
 
 export const MovieDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const [movie, setMovie] = useState<MovieResponse | null>(null);
-  const [genre, setGenre] = useState<GenreResponse | null>(null);
   const [reviews, setReviews] = useState<ReviewResponse[]>([]);
   const [loading, setLoading] = useState(true);
+  const { user } = useAuth();
   
   // Review Form State
   const [newReviewContent, setNewReviewContent] = useState('');
@@ -29,16 +29,6 @@ export const MovieDetail: React.FC = () => {
     try {
       const movieData = await movieService.getById(movieId);
       setMovie(movieData);
-
-      // Fetch genre details since movie only has genreId
-      if (movieData.genreId) {
-        try {
-            const genreData = await genreService.getById(movieData.genreId);
-            setGenre(genreData);
-        } catch (e) {
-            console.warn("Could not fetch genre details");
-        }
-      }
 
       const reviewsData = await reviewService.getByMovie(movieId);
       setReviews(reviewsData);
@@ -64,10 +54,12 @@ export const MovieDetail: React.FC = () => {
 
   const handlePostReview = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!user) return alert("Please login to review");
+    
     try {
         await reviewService.create({
             movieId,
-            userId: MOCK_CURRENT_USER_ID,
+            userId: user.id,
             content: newReviewContent,
             rating: newReviewRating
         });
@@ -81,11 +73,12 @@ export const MovieDetail: React.FC = () => {
   const handlePostComment = async (reviewId: number) => {
     const content = commentInputs[reviewId];
     if(!content) return;
+    if (!user) return alert("Please login to comment");
     
     try {
         await commentService.create({
             reviewId,
-            userId: MOCK_CURRENT_USER_ID,
+            userId: user.id,
             content
         });
         setCommentInputs(prev => ({...prev, [reviewId]: ''}));
@@ -102,7 +95,7 @@ export const MovieDetail: React.FC = () => {
 
   return (
     <div className="animate-fade-in">
-      <Link to="/" className="inline-flex items-center text-gray-400 hover:text-white mb-6 transition-colors">
+      <Link to="/movies" className="inline-flex items-center text-gray-400 hover:text-white mb-6 transition-colors">
         <ArrowLeft size={18} className="mr-2" /> Back to Movies
       </Link>
 
@@ -121,11 +114,19 @@ export const MovieDetail: React.FC = () => {
                     <Film size={300} />
                 </div>
                 <div className="relative z-10">
-                    <div className="flex items-center gap-3 mb-2">
-                        <span className="bg-brand-accent px-3 py-1 rounded-full text-xs font-bold text-white uppercase tracking-wider">
-                            {genre?.name || 'Movie'}
-                        </span>
-                        <span className="flex items-center gap-1 text-gray-300 text-sm">
+                    <div className="flex flex-wrap items-center gap-2 mb-2">
+                        {movie.genres && movie.genres.length > 0 ? (
+                           movie.genres.map(g => (
+                            <span key={g.id} className="bg-brand-accent px-3 py-1 rounded-full text-xs font-bold text-white uppercase tracking-wider">
+                                {g.name}
+                            </span>
+                           ))
+                        ) : (
+                            <span className="bg-brand-700 px-3 py-1 rounded-full text-xs font-bold text-white uppercase tracking-wider">
+                                Movie
+                            </span>
+                        )}
+                        <span className="flex items-center gap-1 text-gray-300 text-sm ml-2">
                             <Calendar size={14} /> {movie.releaseYear}
                         </span>
                     </div>

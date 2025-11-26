@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useMemo } from 'react';
+
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Search, Star, Film } from 'lucide-react';
 import { movieService, genreService } from '../services/api';
@@ -30,18 +31,16 @@ export const Home: React.FC = () => {
     fetchData();
   }, []);
 
-  // Create a map for easy genre name lookup since movie only has genreId
-  const genreMap = useMemo(() => {
-    const map: Record<number, string> = {};
-    genres.forEach(g => map[g.id] = g.name);
-    return map;
-  }, [genres]);
-
   const filteredMovies = movies.filter(m => {
-    const matchesGenre = selectedGenre ? m.genreId === selectedGenre : true;
+    // Check if any of the movie's genres match the selected genre ID
+    const matchesGenre = selectedGenre 
+        ? m.genres?.some(g => g.id === selectedGenre) 
+        : true;
+    
     // Check title or actors
     const matchesSearch = m.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
                           (m.actors && m.actors.toLowerCase().includes(searchQuery.toLowerCase()));
+    
     return matchesGenre && matchesSearch;
   });
 
@@ -104,9 +103,17 @@ export const Home: React.FC = () => {
                      <h3 className="font-bold text-lg text-white truncate mb-1">{movie.title}</h3>
                      <div className="flex justify-between items-center text-sm text-gray-400">
                         <span>{movie.releaseYear}</span>
-                        <span className="bg-brand-700 px-2 py-0.5 rounded text-xs text-brand-200">
-                            {genreMap[movie.genreId] || 'General'}
-                        </span>
+                        <div className="flex gap-1 overflow-hidden">
+                          {movie.genres && movie.genres.length > 0 ? (
+                            <span className="bg-brand-700 px-2 py-0.5 rounded text-xs text-brand-200 truncate max-w-[100px]">
+                                {movie.genres[0].name}{movie.genres.length > 1 ? ` +${movie.genres.length - 1}` : ''}
+                            </span>
+                          ) : (
+                            <span className="bg-brand-700 px-2 py-0.5 rounded text-xs text-brand-200">
+                                General
+                            </span>
+                          )}
+                        </div>
                      </div>
                    </div>
                  </Link>

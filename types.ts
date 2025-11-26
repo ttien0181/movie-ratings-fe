@@ -1,3 +1,4 @@
+
 export interface APIResponse<T> {
   status: string;
   result: T;
@@ -9,6 +10,44 @@ export interface ErrorDetail {
   errorMessage: string;
   timestamp: string;
 }
+
+// --- Auth Types ---
+
+export interface AuthRequest {
+  email: string;
+  password?: string;
+}
+
+export interface AuthResponse {
+  token: string;
+  id: number;
+  username: string;
+  email: string;
+  role: string;
+}
+
+export interface RegisterRequest {
+  username: string;
+  email: string;
+  password: string;
+  verificationCode: string;
+}
+
+export interface SendVerificationCodeRequest {
+  email: string;
+}
+
+export interface ForgotPasswordRequest {
+  email: string;
+}
+
+export interface ResetPasswordRequest {
+  email: string;
+  verificationCode: string;
+  newPassword: string;
+}
+
+// --- Domain Types ---
 
 export interface GenreResponse {
   id: number;
@@ -26,20 +65,21 @@ export interface MovieResponse {
   title: string;
   description: string;
   releaseYear: number;
-  rating: number;      // Float in backend
-  totalRate: number;   // Integer in backend
-  genreId: number;     // Long in backend
+  rating?: number;      // Float in backend (can be null)
+  totalRate?: number;   // Integer in backend (can be null)
+  genres: GenreResponse[]; // Many-to-Many relationship
   createdAt?: string;
   actors?: string;
-  posterUrl?: string;  // Frontend only (mocked)
+  posterUrl?: string;   // New field from backend
 }
 
 export interface MovieRequest {
   title: string;
   description: string;
   releaseYear: number;
-  genreId: number;
+  genreIds: number[]; // List of IDs for creation
   actors: string;
+  posterUrl?: string; // New field
 }
 
 export interface UserResponse {
