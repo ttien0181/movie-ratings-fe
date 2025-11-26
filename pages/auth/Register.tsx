@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { authService } from '../../services/api';
-import { Mail, User, Lock, KeyRound, CheckCircle } from 'lucide-react';
+import { authService, ApiError } from '../../services/api';
+import { Mail, User, Lock, KeyRound, CheckCircle, AlertCircle } from 'lucide-react';
+import { ErrorDetail } from '../../types';
 
 export const Register: React.FC = () => {
   const [step, setStep] = useState<1 | 2>(1);
@@ -10,18 +11,32 @@ export const Register: React.FC = () => {
   const [password, setPassword] = useState('');
   const [verificationCode, setVerificationCode] = useState('');
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [generalError, setGeneralError] = useState('');
+  const [apiErrors, setApiErrors] = useState<ErrorDetail[]>([]);
   const navigate = useNavigate();
+
+  const clearErrors = () => {
+    setGeneralError('');
+    setApiErrors([]);
+  };
+
+  const handleError = (err: any) => {
+    if (err instanceof ApiError && err.errors.length > 0) {
+      setApiErrors(err.errors);
+    } else {
+      setGeneralError(err.message || 'An unexpected error occurred.');
+    }
+  };
 
   const handleSendCode = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    setError('');
+    clearErrors();
     try {
       await authService.sendVerificationCode({ email });
       setStep(2);
     } catch (err: any) {
-      setError(err.message || 'Failed to send verification code. Email might be in use.');
+      handleError(err);
     } finally {
       setLoading(false);
     }
@@ -30,12 +45,12 @@ export const Register: React.FC = () => {
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    setError('');
+    clearErrors();
     try {
       await authService.register({ username, email, password, verificationCode });
       navigate('/login', { state: { message: 'Registration successful! Please login.' } });
     } catch (err: any) {
-      setError(err.message || 'Registration failed. Invalid code or data.');
+      handleError(err);
     } finally {
       setLoading(false);
     }
@@ -51,9 +66,21 @@ export const Register: React.FC = () => {
           </p>
         </div>
 
-        {error && (
-          <div className="bg-red-900/50 border border-red-700 text-red-200 px-4 py-3 rounded text-sm text-center">
-            {error}
+        {(generalError || apiErrors.length > 0) && (
+          <div className="bg-red-900/50 border border-red-700 text-red-200 px-4 py-3 rounded text-sm">
+            <div className="flex items-start gap-2">
+              <AlertCircle size={16} className="mt-0.5 shrink-0" />
+              <div>
+                {generalError && <p>{generalError}</p>}
+                {apiErrors.length > 0 && (
+                  <ul className="list-disc list-inside space-y-1 mt-1">
+                    {apiErrors.map((err, idx) => (
+                      <li key={idx}>{err.errorMessage}</li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            </div>
           </div>
         )}
 

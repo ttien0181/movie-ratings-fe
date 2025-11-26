@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { authService } from '../../services/api';
-import { Mail, Lock, KeyRound, ArrowLeft } from 'lucide-react';
+import { authService, ApiError } from '../../services/api';
+import { Mail, Lock, KeyRound, ArrowLeft, AlertCircle } from 'lucide-react';
+import { ErrorDetail } from '../../types';
 
 export const ForgotPassword: React.FC = () => {
   const [step, setStep] = useState<1 | 2>(1);
@@ -9,21 +10,35 @@ export const ForgotPassword: React.FC = () => {
   const [newPassword, setNewPassword] = useState('');
   const [verificationCode, setVerificationCode] = useState('');
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [generalError, setGeneralError] = useState('');
+  const [apiErrors, setApiErrors] = useState<ErrorDetail[]>([]);
   const [message, setMessage] = useState('');
   const navigate = useNavigate();
+
+  const clearErrors = () => {
+    setGeneralError('');
+    setApiErrors([]);
+    setMessage('');
+  };
+
+  const handleError = (err: any) => {
+    if (err instanceof ApiError && err.errors.length > 0) {
+      setApiErrors(err.errors);
+    } else {
+      setGeneralError(err.message || 'An unexpected error occurred.');
+    }
+  };
 
   const handleSendCode = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    setError('');
-    setMessage('');
+    clearErrors();
     try {
       await authService.sendForgotPasswordCode({ email });
       setMessage('Reset code sent to your email.');
       setStep(2);
     } catch (err: any) {
-      setError(err.message || 'Failed to send reset code.');
+      handleError(err);
     } finally {
       setLoading(false);
     }
@@ -32,13 +47,13 @@ export const ForgotPassword: React.FC = () => {
   const handleReset = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    setError('');
+    clearErrors();
     try {
       await authService.resetPassword({ email, verificationCode, newPassword });
       alert('Password reset successfully! You can now login.');
       navigate('/login');
     } catch (err: any) {
-      setError(err.message || 'Failed to reset password.');
+      handleError(err);
     } finally {
       setLoading(false);
     }
@@ -57,11 +72,24 @@ export const ForgotPassword: React.FC = () => {
           </p>
         </div>
 
-        {error && (
-          <div className="bg-red-900/50 border border-red-700 text-red-200 px-4 py-3 rounded text-sm text-center">
-            {error}
+        {(generalError || apiErrors.length > 0) && (
+          <div className="bg-red-900/50 border border-red-700 text-red-200 px-4 py-3 rounded text-sm">
+            <div className="flex items-start gap-2">
+              <AlertCircle size={16} className="mt-0.5 shrink-0" />
+              <div>
+                {generalError && <p>{generalError}</p>}
+                {apiErrors.length > 0 && (
+                  <ul className="list-disc list-inside space-y-1 mt-1">
+                    {apiErrors.map((err, idx) => (
+                      <li key={idx}>{err.errorMessage}</li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            </div>
           </div>
         )}
+        
         {message && (
           <div className="bg-green-900/50 border border-green-700 text-green-200 px-4 py-3 rounded text-sm text-center">
             {message}

@@ -1,13 +1,15 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { authService } from '../../services/api';
+import { authService, ApiError } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
-import { Lock, Mail } from 'lucide-react';
+import { Lock, Mail, AlertCircle } from 'lucide-react';
+import { ErrorDetail } from '../../types';
 
 export const Login: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
+  const [generalError, setGeneralError] = useState('');
+  const [apiErrors, setApiErrors] = useState<ErrorDetail[]>([]);
   const [loading, setLoading] = useState(false);
   const { login } = useAuth();
   const navigate = useNavigate();
@@ -15,14 +17,19 @@ export const Login: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    setError('');
+    setGeneralError('');
+    setApiErrors([]);
 
     try {
       const response = await authService.login({ email, password });
       login(response);
       navigate('/movies');
     } catch (err: any) {
-      setError(err.message || 'Login failed. Please check your credentials.');
+      if (err instanceof ApiError && err.errors.length > 0) {
+        setApiErrors(err.errors);
+      } else {
+        setGeneralError(err.message || 'Login failed. Please check your credentials.');
+      }
     } finally {
       setLoading(false);
     }
@@ -38,9 +45,21 @@ export const Login: React.FC = () => {
           </p>
         </div>
         
-        {error && (
-          <div className="bg-red-900/50 border border-red-700 text-red-200 px-4 py-3 rounded text-sm text-center">
-            {error}
+        {(generalError || apiErrors.length > 0) && (
+          <div className="bg-red-900/50 border border-red-700 text-red-200 px-4 py-3 rounded text-sm">
+            <div className="flex items-start gap-2">
+              <AlertCircle size={16} className="mt-0.5 shrink-0" />
+              <div>
+                {generalError && <p>{generalError}</p>}
+                {apiErrors.length > 0 && (
+                  <ul className="list-disc list-inside space-y-1 mt-1">
+                    {apiErrors.map((err, idx) => (
+                      <li key={idx}>{err.errorMessage}</li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            </div>
           </div>
         )}
 

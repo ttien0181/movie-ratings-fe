@@ -1,10 +1,22 @@
 import { 
   APIResponse, MovieResponse, MovieRequest, GenreResponse, GenreRequest, 
   ReviewResponse, ReviewRequest, CommentResponse, CommentRequest, UserResponse, UserRequest,
-  AuthRequest, AuthResponse, RegisterRequest, SendVerificationCodeRequest, ForgotPasswordRequest, ResetPasswordRequest
+  AuthRequest, AuthResponse, RegisterRequest, SendVerificationCodeRequest, ForgotPasswordRequest, ResetPasswordRequest,
+  ErrorDetail
 } from '../types';
 
 const BASE_URL = 'http://localhost:8080/movie-ratings/api';
+
+// Custom Error Class to hold structured backend errors
+export class ApiError extends Error {
+  public errors: ErrorDetail[];
+
+  constructor(message: string, errors: ErrorDetail[] = []) {
+    super(message);
+    this.name = 'ApiError';
+    this.errors = errors;
+  }
+}
 
 // Helper to get token
 const getAuthHeaders = () => {
@@ -14,20 +26,38 @@ const getAuthHeaders = () => {
 
 // Helper to handle response
 async function handleResponse<T>(response: Response): Promise<T> {
-  if (!response.ok) {
-    const errorText = await response.text();
-    try {
-        const errorJson = JSON.parse(errorText);
-        throw new Error(errorJson.result || `API Error: ${response.status}`);
-    } catch (e) {
-        throw new Error(`API Error: ${response.status} - ${errorText}`);
+  const text = await response.text();
+  let data: APIResponse<T>;
+
+  try {
+    data = JSON.parse(text);
+  } catch (e) {
+    // If response is not JSON
+    if (!response.ok) {
+      throw new Error(`Request failed (${response.status}): ${text || response.statusText}`);
     }
+    // If 200 OK but not JSON (shouldn't happen with this API structure)
+    throw new Error(`Invalid response format`);
   }
-  const data: APIResponse<T> = await response.json();
-  if (data.status !== 'SUCCESS') {
-    throw new Error(`Backend Error: ${data.status} - ${JSON.stringify(data.errors)}`);
+
+  // Check API Status
+  if (data.status === 'SUCCESS') {
+    return data.result;
   }
-  return data.result;
+
+  // Handle API Error
+  const errorDetails: ErrorDetail[] = data.errors || [];
+  let message = data.status || 'Operation Failed';
+  
+  if (errorDetails.length > 0) {
+    // Construct a summary message from the first few errors
+    message = errorDetails.map(e => e.errorMessage).join('; ');
+  } else if (typeof data.result === 'string') {
+    // Fallback if result contains error message
+    message = data.result;
+  }
+
+  throw new ApiError(message, errorDetails);
 }
 
 export const authService = {
