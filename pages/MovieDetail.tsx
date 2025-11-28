@@ -1,7 +1,6 @@
-
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { Star, Calendar, User, MessageSquare, ArrowLeft, Send, Film } from 'lucide-react';
+import { Star, Calendar, User, MessageSquare, ArrowLeft, Send, Film, Pencil, Trash2, X } from 'lucide-react';
 import { movieService, reviewService, commentService } from '../services/api';
 import { MovieResponse, ReviewResponse, CommentResponse } from '../types';
 import { RatingChart } from '../components/Visuals';
@@ -17,6 +16,7 @@ export const MovieDetail: React.FC = () => {
   // Review Form State
   const [newReviewContent, setNewReviewContent] = useState('');
   const [newReviewRating, setNewReviewRating] = useState(5);
+  const [isEditing, setIsEditing] = useState(false);
   
   // Comment Form State (tracked by review ID)
   const [activeCommentInput, setActiveCommentInput] = useState<number | null>(null);
@@ -24,6 +24,16 @@ export const MovieDetail: React.FC = () => {
   const [commentsMap, setCommentsMap] = useState<{[key: number]: CommentResponse[]}>({});
 
   const movieId = Number(id);
+
+  // Derive user's existing review
+  const userReview = useMemo(() => 
+    user ? reviews.find(r => r.userId === user.id) : null
+  , [reviews, user]);
+
+  // Filter out user review from the main list to avoid duplication if we show it at top
+  const otherReviews = useMemo(() => 
+    user ? reviews.filter(r => r.userId !== user.id) : reviews
+  , [reviews, user]);
 
   const loadData = useCallback(async () => {
     try {
@@ -52,21 +62,62 @@ export const MovieDetail: React.FC = () => {
     loadData();
   }, [loadData]);
 
-  const handlePostReview = async (e: React.FormEvent) => {
+  const handleEditClick = () => {
+    if (userReview) {
+        setNewReviewContent(userReview.content);
+        setNewReviewRating(userReview.rating);
+        setIsEditing(true);
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setIsEditing(false);
+    setNewReviewContent('');
+    setNewReviewRating(5);
+  };
+
+  const handleDeleteReview = async () => {
+    if (!userReview) return;
+    if (!window.confirm("Are you sure you want to delete your review?")) return;
+    
+    try {
+        await reviewService.delete(userReview.id);
+        await loadData();
+        // Reset form state just in case
+        setNewReviewContent('');
+        setNewReviewRating(5);
+        setIsEditing(false);
+    } catch (e) {
+        alert("Failed to delete review");
+    }
+  };
+
+  const handleSubmitReview = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return alert("Please login to review");
     
     try {
-        await reviewService.create({
-            movieId,
-            userId: user.id,
-            content: newReviewContent,
-            rating: newReviewRating
-        });
+        if (isEditing && userReview) {
+            await reviewService.update(userReview.id, {
+                movieId,
+                userId: user.id,
+                content: newReviewContent,
+                rating: newReviewRating
+            });
+            setIsEditing(false);
+        } else {
+            await reviewService.create({
+                movieId,
+                userId: user.id,
+                content: newReviewContent,
+                rating: newReviewRating
+            });
+        }
         setNewReviewContent('');
+        setNewReviewRating(5);
         await loadData(); // Refresh
     } catch (e) {
-        alert('Failed to post review');
+        alert('Failed to save review');
     }
   };
 
@@ -160,44 +211,107 @@ export const MovieDetail: React.FC = () => {
                 <h2 className="text-2xl font-bold text-white">Reviews <span className="text-gray-500 text-lg ml-2">({reviews.length})</span></h2>
             </div>
 
-            {/* Add Review Form */}
-            <form onSubmit={handlePostReview} className="bg-brand-800 p-6 rounded-xl border border-brand-700">
-                <h3 className="text-lg font-semibold text-white mb-4">Write a Review</h3>
-                <div className="mb-4">
-                    <label className="block text-sm text-gray-400 mb-2">Your Rating</label>
-                    <div className="flex gap-2">
-                        {[1, 2, 3, 4, 5].map(star => (
-                            <button 
-                                key={star} 
-                                type="button"
-                                onClick={() => setNewReviewRating(star)}
-                                className="focus:outline-none"
-                            >
-                                <Star 
-                                    size={24} 
-                                    className={star <= newReviewRating ? "text-yellow-400 fill-yellow-400" : "text-gray-600"} 
-                                />
-                            </button>
-                        ))}
-                    </div>
+            {/* User Review Status Section */}
+            {user ? (
+                <>
+                    {/* CASE 1: User has reviewed and is NOT editing -> Show Review Card */}
+                    {userReview && !isEditing ? (
+                         <div className="bg-brand-700/30 p-6 rounded-xl border border-brand-500/50 relative">
+                            <div className="flex justify-between items-start mb-4">
+                                <h3 className="text-lg font-semibold text-brand-400">Your Review</h3>
+                                <div className="flex gap-2">
+                                    <button 
+                                        onClick={handleEditClick}
+                                        className="p-2 text-gray-400 hover:text-white hover:bg-brand-700 rounded-lg transition-colors flex items-center gap-2 text-sm"
+                                    >
+                                        <Pencil size={16} /> Edit
+                                    </button>
+                                    <button 
+                                        onClick={handleDeleteReview}
+                                        className="p-2 text-gray-400 hover:text-red-400 hover:bg-red-900/20 rounded-lg transition-colors flex items-center gap-2 text-sm"
+                                    >
+                                        <Trash2 size={16} /> Delete
+                                    </button>
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-1 mb-3">
+                                {[...Array(5)].map((_, i) => (
+                                    <Star key={i} size={18} className={i < userReview.rating ? "text-yellow-400 fill-yellow-400" : "text-gray-600"} />
+                                ))}
+                                <span className="ml-2 text-white font-bold">{userReview.rating}/5</span>
+                            </div>
+                            <p className="text-gray-200">{userReview.content}</p>
+                            <p className="text-xs text-gray-500 mt-3">Posted on {userReview.createdAt ? new Date(userReview.createdAt).toLocaleDateString() : 'Just now'}</p>
+                         </div>
+                    ) : (
+                        /* CASE 2: User has NOT reviewed OR is editing -> Show Form */
+                        <form onSubmit={handleSubmitReview} className="bg-brand-800 p-6 rounded-xl border border-brand-700 relative">
+                            {isEditing && (
+                                <button 
+                                    type="button" 
+                                    onClick={handleCancelEdit}
+                                    className="absolute top-4 right-4 text-gray-500 hover:text-white"
+                                >
+                                    <X size={20} />
+                                </button>
+                            )}
+                            <h3 className="text-lg font-semibold text-white mb-4">
+                                {isEditing ? 'Edit Your Review' : 'Write a Review'}
+                            </h3>
+                            <div className="mb-4">
+                                <label className="block text-sm text-gray-400 mb-2">Your Rating</label>
+                                <div className="flex gap-2">
+                                    {[1, 2, 3, 4, 5].map(star => (
+                                        <button 
+                                            key={star} 
+                                            type="button"
+                                            onClick={() => setNewReviewRating(star)}
+                                            className="focus:outline-none"
+                                        >
+                                            <Star 
+                                                size={24} 
+                                                className={star <= newReviewRating ? "text-yellow-400 fill-yellow-400" : "text-gray-600"} 
+                                            />
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                            <textarea
+                                value={newReviewContent}
+                                onChange={e => setNewReviewContent(e.target.value)}
+                                placeholder="Share your thoughts on this movie..."
+                                className="w-full bg-brand-900 border border-brand-700 rounded-lg p-3 text-white focus:outline-none focus:ring-1 focus:ring-brand-500 min-h-[100px] mb-4"
+                                required
+                            />
+                            <div className="flex justify-end gap-3">
+                                {isEditing && (
+                                    <button 
+                                        type="button" 
+                                        onClick={handleCancelEdit}
+                                        className="px-4 py-2 rounded-lg text-gray-400 hover:text-white hover:bg-brand-700 transition-colors"
+                                    >
+                                        Cancel
+                                    </button>
+                                )}
+                                <button type="submit" className="bg-brand-500 hover:bg-brand-400 text-white px-6 py-2 rounded-lg font-medium transition-colors flex items-center gap-2">
+                                    <Send size={16} /> {isEditing ? 'Update Review' : 'Post Review'}
+                                </button>
+                            </div>
+                        </form>
+                    )}
+                </>
+            ) : (
+                <div className="bg-brand-800 p-6 rounded-xl border border-brand-700 text-center">
+                    <p className="text-gray-400 mb-4">Please login to write a review.</p>
+                    <Link to="/login" className="inline-block bg-brand-500 text-white px-6 py-2 rounded-lg hover:bg-brand-400">
+                        Login
+                    </Link>
                 </div>
-                <textarea
-                    value={newReviewContent}
-                    onChange={e => setNewReviewContent(e.target.value)}
-                    placeholder="Share your thoughts on this movie..."
-                    className="w-full bg-brand-900 border border-brand-700 rounded-lg p-3 text-white focus:outline-none focus:ring-1 focus:ring-brand-500 min-h-[100px] mb-4"
-                    required
-                />
-                <div className="flex justify-end">
-                    <button type="submit" className="bg-brand-500 hover:bg-brand-400 text-white px-6 py-2 rounded-lg font-medium transition-colors flex items-center gap-2">
-                        <Send size={16} /> Post Review
-                    </button>
-                </div>
-            </form>
+            )}
 
-            {/* Reviews List */}
+            {/* Other Reviews List */}
             <div className="space-y-4">
-                {reviews.map(review => (
+                {otherReviews.length > 0 ? otherReviews.map(review => (
                     <div key={review.id} className="bg-brand-800 rounded-xl border border-brand-700 p-6">
                         <div className="flex justify-between items-start mb-3">
                             <div className="flex items-center gap-3">
@@ -261,8 +375,11 @@ export const MovieDetail: React.FC = () => {
                             )}
                         </div>
                     </div>
-                ))}
-                {reviews.length === 0 && <div className="text-center text-gray-500 py-8">No reviews yet. Be the first!</div>}
+                )) : (
+                    <div className="text-center text-gray-500 py-8">
+                        {userReview ? "No other reviews yet." : "No reviews yet. Be the first!"}
+                    </div>
+                )}
             </div>
         </div>
 

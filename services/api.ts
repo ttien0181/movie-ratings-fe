@@ -219,6 +219,17 @@ export const reviewService = {
     });
     return handleResponse<ReviewResponse>(res);
   },
+  update: async (id: number, req: ReviewRequest): Promise<ReviewResponse> => {
+    const res = await fetch(`${BASE_URL}/reviews/${id}`, {
+      method: 'PUT',
+      headers: { 
+        'Content-Type': 'application/json',
+        ...getAuthHeaders()
+      },
+      body: JSON.stringify(req),
+    });
+    return handleResponse<ReviewResponse>(res);
+  },
   delete: async (id: number): Promise<void> => {
     await fetch(`${BASE_URL}/reviews/${id}`, {
       method: 'DELETE',
