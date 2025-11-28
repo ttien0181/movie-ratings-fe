@@ -36,7 +36,6 @@ async function handleResponse<T>(response: Response): Promise<T> {
     if (!response.ok) {
       throw new Error(`Request failed (${response.status}): ${text || response.statusText}`);
     }
-    // If 200 OK but not JSON (shouldn't happen with this API structure)
     throw new Error(`Invalid response format`);
   }
 
@@ -45,7 +44,7 @@ async function handleResponse<T>(response: Response): Promise<T> {
     return data.result;
   }
 
-  // Handle API Error
+  // Handle API Error (including Banned User 403/401 that returns JSON)
   const errorDetails: ErrorDetail[] = data.errors || [];
   let message = data.status || 'Operation Failed';
   
@@ -62,6 +61,7 @@ async function handleResponse<T>(response: Response): Promise<T> {
 
 export const authService = {
   login: async (req: AuthRequest): Promise<AuthResponse> => {
+    // Note: If user is banned, backend returns 403 with JSON body. handleResponse will parse it.
     const res = await fetch(`${BASE_URL}/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -147,6 +147,12 @@ export const movieService = {
       body: JSON.stringify(req),
     });
     return handleResponse<MovieResponse>(res);
+  },
+  delete: async (id: number): Promise<void> => {
+    await fetch(`${BASE_URL}/movies/${id}`, {
+      method: 'DELETE',
+      headers: getAuthHeaders()
+    });
   }
 };
 
@@ -212,6 +218,12 @@ export const reviewService = {
       body: JSON.stringify(req),
     });
     return handleResponse<ReviewResponse>(res);
+  },
+  delete: async (id: number): Promise<void> => {
+    await fetch(`${BASE_URL}/reviews/${id}`, {
+      method: 'DELETE',
+      headers: getAuthHeaders()
+    });
   }
 };
 
@@ -221,6 +233,16 @@ export const commentService = {
       headers: getAuthHeaders()
     });
     return handleResponse<CommentResponse[]>(res);
+  },
+  getByUser: async (userId: number): Promise<CommentResponse[]> => {
+    try {
+      const res = await fetch(`${BASE_URL}/comments/user/${userId}`, {
+        headers: getAuthHeaders()
+      });
+      return handleResponse<CommentResponse[]>(res);
+    } catch (e) {
+      return [];
+    }
   },
   create: async (req: CommentRequest): Promise<CommentResponse> => {
     const res = await fetch(`${BASE_URL}/comments`, {
@@ -232,6 +254,12 @@ export const commentService = {
       body: JSON.stringify(req),
     });
     return handleResponse<CommentResponse>(res);
+  },
+  delete: async (id: number): Promise<void> => {
+    await fetch(`${BASE_URL}/comments/${id}`, {
+      method: 'DELETE',
+      headers: getAuthHeaders()
+    });
   }
 };
 
@@ -252,5 +280,20 @@ export const userService = {
             headers: getAuthHeaders()
         });
         return handleResponse<UserResponse[]>(res);
+    },
+    getById: async (id: number): Promise<UserResponse> => {
+        const res = await fetch(`${BASE_URL}/users/${id}`, {
+            headers: getAuthHeaders()
+        });
+        return handleResponse<UserResponse>(res);
+    },
+    setBanned: async (id: number, banned: boolean): Promise<UserResponse> => {
+        const res = await fetch(`${BASE_URL}/users/${id}/ban?banned=${banned}`, {
+            method: 'PUT',
+            headers: {
+                ...getAuthHeaders()
+            }
+        });
+        return handleResponse<UserResponse>(res);
     }
 }

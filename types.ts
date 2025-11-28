@@ -1,4 +1,3 @@
-
 export interface APIResponse<T> {
   status: string;
   result: T;
@@ -23,7 +22,7 @@ export interface AuthResponse {
   id: number;
   username: string;
   email: string;
-  role: string;
+  role: 'USER' | 'ADMIN';
 }
 
 export interface RegisterRequest {
@@ -53,11 +52,13 @@ export interface GenreResponse {
   id: number;
   name: string;
   description?: string;
+  thumbnailUrl?: string;
 }
 
 export interface GenreRequest {
   name: string;
   description?: string;
+  thumbnailUrl?: string;
 }
 
 export interface MovieResponse {
@@ -87,6 +88,8 @@ export interface UserResponse {
   username: string;
   email: string;
   createdAt?: string;
+  banned: boolean; // Added for Admin
+  role?: 'USER' | 'ADMIN'; // Optional depending on backend DTO, useful for UI
 }
 
 export interface UserRequest {

@@ -59,9 +59,16 @@ export const Genres: React.FC = () => {
         </button>
 
         <div className="bg-brand-800 rounded-xl p-8 border border-brand-700 relative overflow-hidden">
-            <div className="absolute right-0 top-0 p-8 opacity-5 transform rotate-12">
-                <Tag size={150} />
-            </div>
+             {selectedGenre.thumbnailUrl ? (
+                 <div className="absolute inset-0 z-0">
+                     <img src={selectedGenre.thumbnailUrl} alt={selectedGenre.name} className="w-full h-full object-cover opacity-20" />
+                     <div className="absolute inset-0 bg-gradient-to-r from-brand-900 via-brand-900/90 to-transparent"></div>
+                 </div>
+             ) : (
+                <div className="absolute right-0 top-0 p-8 opacity-5 transform rotate-12">
+                    <Tag size={150} />
+                </div>
+             )}
             <div className="relative z-10">
                 <h1 className="text-4xl font-bold text-white mb-2">{selectedGenre.name}</h1>
                 <p className="text-xl text-gray-400">{selectedGenre.description || `Explore our collection of ${selectedGenre.name} movies.`}</p>
@@ -127,13 +134,19 @@ export const Genres: React.FC = () => {
             onClick={() => handleGenreClick(genre)}
             className="group cursor-pointer bg-brand-800 hover:bg-brand-750 p-6 rounded-xl border border-brand-700 hover:border-brand-500 transition-all hover:-translate-y-1 relative overflow-hidden"
           >
+            {genre.thumbnailUrl && (
+                <div className="absolute inset-0 z-0">
+                    <img src={genre.thumbnailUrl} alt={genre.name} className="w-full h-full object-cover opacity-0 group-hover:opacity-20 transition-opacity duration-500" />
+                </div>
+            )}
+            
             <div className="absolute right-[-20px] bottom-[-20px] opacity-10 text-white transform rotate-[-15deg] transition-transform group-hover:scale-110 group-hover:rotate-0">
-               <Tag size={120} />
+               {genre.thumbnailUrl ? <img src={genre.thumbnailUrl} alt="" className="w-40 h-40 object-cover rounded-full blur-sm" /> : <Tag size={120} />}
             </div>
             
             <div className="relative z-10">
                 <div className="w-12 h-12 bg-brand-700 rounded-lg flex items-center justify-center text-brand-400 mb-4 group-hover:bg-brand-600 group-hover:text-white transition-colors">
-                    <Film size={24} />
+                    {genre.thumbnailUrl ? <img src={genre.thumbnailUrl} alt="" className="w-full h-full object-cover rounded-lg" /> : <Film size={24} />}
                 </div>
                 <h2 className="text-xl font-bold text-white mb-2 group-hover:text-brand-400 transition-colors">{genre.name}</h2>
                 <p className="text-sm text-gray-400 line-clamp-2">{genre.description || "Discover movies in this category."}</p>

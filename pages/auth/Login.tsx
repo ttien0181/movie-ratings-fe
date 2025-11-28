@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { authService, ApiError } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
-import { Lock, Mail, AlertCircle } from 'lucide-react';
+import { Lock, Mail, AlertCircle, Ban } from 'lucide-react';
 import { ErrorDetail } from '../../types';
 
 export const Login: React.FC = () => {
@@ -35,6 +35,8 @@ export const Login: React.FC = () => {
     }
   };
 
+  const isBannedError = apiErrors.some(e => e.field === 'account');
+
   return (
     <div className="flex min-h-[80vh] items-center justify-center px-4">
       <div className="w-full max-w-md space-y-8 bg-brand-800 p-8 rounded-2xl border border-brand-700 shadow-xl">
@@ -46,15 +48,15 @@ export const Login: React.FC = () => {
         </div>
         
         {(generalError || apiErrors.length > 0) && (
-          <div className="bg-red-900/50 border border-red-700 text-red-200 px-4 py-3 rounded text-sm">
+          <div className={`${isBannedError ? 'bg-red-900/80 border-red-500' : 'bg-red-900/50 border-red-700'} border text-red-200 px-4 py-3 rounded text-sm`}>
             <div className="flex items-start gap-2">
-              <AlertCircle size={16} className="mt-0.5 shrink-0" />
+              {isBannedError ? <Ban size={18} className="mt-0.5 shrink-0 text-red-400" /> : <AlertCircle size={16} className="mt-0.5 shrink-0" />}
               <div>
                 {generalError && <p>{generalError}</p>}
                 {apiErrors.length > 0 && (
                   <ul className="list-disc list-inside space-y-1 mt-1">
                     {apiErrors.map((err, idx) => (
-                      <li key={idx}>{err.errorMessage}</li>
+                      <li key={idx} className={err.field === 'account' ? "font-bold text-red-100" : ""}>{err.errorMessage}</li>
                     ))}
                   </ul>
                 )}

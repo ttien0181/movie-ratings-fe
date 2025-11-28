@@ -8,6 +8,10 @@ import { Register } from './pages/auth/Register';
 import { ForgotPassword } from './pages/auth/ForgotPassword';
 import { Genres } from './pages/Genres';
 import { Profile } from './pages/Profile';
+import { UserList } from './pages/admin/UserList';
+import { UserDetail } from './pages/admin/UserDetail';
+import { AddMovie } from './pages/admin/AddMovie';
+import { AddGenre } from './pages/admin/AddGenre';
 import { Navbar } from './components/Navbar';
 import { AuthProvider, useAuth } from './context/AuthContext';
 
@@ -20,11 +24,23 @@ const Footer: React.FC = () => (
     </footer>
 )
 
-// Wrapper to redirect to landing if not logged in when accessing protected routes
+// Wrapper to redirect to landing if not logged in
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const { isAuthenticated } = useAuth();
     if (!isAuthenticated) {
         return <Navigate to="/login" replace />;
+    }
+    return <>{children}</>;
+};
+
+// Wrapper for Admin Only routes
+const AdminRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+    const { user, isAuthenticated } = useAuth();
+    if (!isAuthenticated) {
+        return <Navigate to="/login" replace />;
+    }
+    if (user?.role !== 'ADMIN') {
+        return <Navigate to="/movies" replace />;
     }
     return <>{children}</>;
 };
@@ -45,6 +61,12 @@ const AppContent: React.FC = () => {
                 <Route path="/movie/:id" element={<ProtectedRoute><div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8"><MovieDetail /></div></ProtectedRoute>} />
                 <Route path="/genres" element={<ProtectedRoute><div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8"><Genres /></div></ProtectedRoute>} />
                 <Route path="/profile" element={<ProtectedRoute><div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8"><Profile /></div></ProtectedRoute>} />
+                
+                {/* Admin Routes */}
+                <Route path="/admin/users" element={<AdminRoute><div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8"><UserList /></div></AdminRoute>} />
+                <Route path="/admin/users/:id" element={<AdminRoute><div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8"><UserDetail /></div></AdminRoute>} />
+                <Route path="/admin/movies/add" element={<AdminRoute><div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8"><AddMovie /></div></AdminRoute>} />
+                <Route path="/admin/genres/add" element={<AdminRoute><div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8"><AddGenre /></div></AdminRoute>} />
               </Routes>
             </main>
             <Footer />
